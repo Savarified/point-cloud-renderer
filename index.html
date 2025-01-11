@@ -64,31 +64,32 @@
         }
     }
 
-    function rotate(vert) {
+    function rotate(vert){
         let x = vert[0] - cam.x;
         let y = vert[1] - cam.y;
         let z = vert[2] - cam.z;
-
+    
         let cosX = Math.cos(cam.rx), sinX = Math.sin(cam.rx);
         let cosY = Math.cos(cam.ry), sinY = Math.sin(cam.ry);
         let cosZ = Math.cos(cam.rz), sinZ = Math.sin(cam.rz);
-
-        // rotation around x-axis
-        let y1 = y * cosX - z * sinX;
-        let z1 = y * sinX + z * cosX;
-
-        // rotation around y-axis
-        let x2 = x * cosY + z1 * sinY;
-        let z2 = -x * sinY + z1 * cosY;
-
+    
         // rotation around z-axis
-        let x3 = x2 * cosZ - y1 * sinZ;
-        let y3 = x2 * sinZ + y1 * cosZ;
-
-        x3 += cam.x;
+        let x1 = x * cosZ - y * sinZ;
+        let y1 = x * sinZ + y * cosZ;
+    
+        // rotation around y-axis
+        let x2 = x1 * cosY + z * sinY;
+        let z2 = -x1 * sinY + z * cosY;
+    
+        // rotation around x-axis
+        let y3 = y1 * cosX - z2 * sinX;
+        let z3 = y1 * sinX + z2 * cosX;
+    
+        x2 += cam.x;
         y3 += cam.y;
-        z2 += cam.z;
-        return [x3,y3,z2];
+        z3 += cam.z;
+    
+        return [x2, y3, z3];
     }
 
     function project(vert){ //perspective projection
