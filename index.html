@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Cloud Renderer</title>
+</head>
+<body>
+    <canvas id="myCanvas" width="600" height="400" style="border:1px solid #FFFF;"></canvas>
+</body>
+</html>
+
+<script>
+    const FPS = 60;
+    const _scale = 4;
+    const eps = 0.0001;
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+    const WIDTH = canvas.width, HEIGHT = canvas.height;
+    const backgroundColor = `rgb(${25}, ${25}, ${25})`;
+    const s = [WIDTH, HEIGHT];
+    const r = [400, 266, 400];
+
+    const player = new Object();
+    player.x = 4.75;
+    player.y = 6;
+    player.z = -13.5;
+    player.dy = 0;
+    player.speed = .25;
+
+    const cam = new Object();
+    cam.x = 0;
+    cam.y = 0;
+    cam.z = 0;
+    cam.rx = 0;
+    cam.ry = 0;
+    cam.rz = 0;
+    cam.rotSpeed = (1/360) * 0.5;
+    cam.clipDistance;
+
+    canvas.addEventListener('click', () => {
+            canvas.requestPointerLock();
+    });
+
+    function lerp(a,b,t){
+        return a + (b-a) * t;
+    }
+
+    let points = []; //each point is an array, [X,Y,Z,R,G,B];
+    const sca = 32;
+    function initializePoints(){
+        for (let x = 0; x < sca; x++){
+            for(let y = 0; y < sca; y++){
+                for(let z = 0; z < sca; z++){
+                    let r = x/sca*255;
+                    let g = y/sca*255;
+                    let b = z/sca*255;
+                    //let ptColor = [r,g,0];
+                    
+                    let point = [x,y,z,r,g,b];
+                    points.push(point);
+                }
+            }
+        }
+    }
+
+    function rotate(vert) {
+        let x = vert[0] - cam.x;
+        let y = vert[1] - cam.y;
+        let z = vert[2] - cam.z;
+
+        let cosX = Math.cos(cam.rx), sinX = Math.sin(cam.rx);
+        let cosY = Math.cos(cam.ry), sinY = Math.sin(cam.ry);
+        let cosZ = Math.cos(cam.rz), sinZ = Math.sin(cam.rz);
+
+        // rotation around x-axis
+        let y1 = y * cosX - z * sinX;
+        let z1 = y * sinX + z * cosX;
+
+        // rotation around y-axis
+        let x2 = x * cosY + z1 * sinY;
+        let z2 = -x * sinY + z1 * cosY;
+
+        // rotation around z-axis
+        let x3 = x2 * cosZ - y1 * sinZ;
+        let y3 = x2 * sinZ + y1 * cosZ;
+
+        x3 += cam.x;
+        y3 += cam.y;
+        z2 += cam.z;
+        return [x3,y3,z2];
+    }
+
+    function project(vert){ //perspective projection
+        let x = vert[0];
+        let y = vert[1];
+        let z = vert[2];
+        x *= _scale;
+        y *= -_scale;
+        z *= _scale;
+
+        [x,y,z] = rotate([x,y,z]);
+
+        x -= cam.x;
+        y += cam.y;
+        z -= cam.z - eps;
+        let xi = (x * s[0])/(z * r[0]) * r[2];
+        let yi = (y * s[1])/(z * r[1]) * r[2];
+
+        xi += 300;
+        yi += 200;
+
+        return [xi, yi];
+    }
+
+    function drawPoint(coords, color, size){
+        let [r,g,b] = color;
+        ctx.beginPath();
+        ctx.arc(coords[0], coords[1], size, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fill();
+    }
+
+    function render(ctx){
+        for(let i = 0; i<points.length; i++){
+            let pt = points[i];
+            [x,y,z] = [pt[0], pt[1], pt[2]];
+            let [r,g,b] = [pt[3], pt[4], pt[5]];
+            let coords = project(pt);
+            drawPoint(coords, [r,g,b], 2);
+        }
+    }
+
+    let mouseX = 0, mouseY = 0;
+    let WASD = [false, false, false, false];
+    const groundPlane = 6;
+    function playerMovement(){
+        const speed = player.speed;
+        cam.x = player.x;
+        cam.y = player.y;
+        cam.z = player.z;
+
+        if(WASD[0]){
+            player.z += speed;
+        }
+
+        if(WASD[2]){
+            player.z -= speed;
+        }
+
+        if(WASD[1]){
+            player.x -= speed;
+        }
+        if(WASD[3]){
+            player.x += speed;
+        }
+
+        if(player.y > groundPlane){
+            player.dy -= 0.025;
+        }
+        else if(player.y < groundPlane){
+            player.y = groundPlane;
+            player.dy = 0;
+        }
+
+        cam.ry -= mouseX * cam.rotSpeed;
+        cam.rx += mouseY * cam.rotSpeed;
+
+        player.y += player.dy;
+    }
+
+    const jumpForce = 0.5;
+    function jump(){
+        console.log("jump!");
+        if(player.y == groundPlane){
+            player.dy+=jumpForce;
+        }
+    }
+
+    function frame(){
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Main loop
+        playerMovement();
+        render(ctx);
+
+        setTimeout(() => { //FPS handler
+        requestAnimationFrame(frame);
+        }, 1000 / FPS);
+    }
+
+    const KEY_W = 87,
+        KEY_A = 65,
+        KEY_S = 83,
+        KEY_D = 68;
+
+    function keyPressed(evt){
+        if (evt.keyCode === 32) {
+            jump();
+        }
+        if (evt.keyCode == KEY_A) {
+            WASD[1] = true;
+        }
+        if (evt.keyCode == KEY_D) {
+            WASD[3] = true;
+        }
+        if (evt.keyCode == KEY_W) {
+            WASD[0] = true;
+        }
+        if (evt.keyCode == KEY_S) {
+            WASD[2] = true;
+        }
+        evt.preventDefault();
+    }
+
+    function keyReleased(evt){
+        if (evt.keyCode == KEY_A) {
+            WASD[1] = false;
+        }
+        if (evt.keyCode == KEY_D) {
+            WASD[3] = false;
+        }
+        if (evt.keyCode == KEY_W) {
+            WASD[0] = false;
+        }
+        if (evt.keyCode == KEY_S) {
+            WASD[2] = false;
+        }
+            evt.preventDefault();
+        }
+
+    document.addEventListener('keydown', keyPressed);
+    document.addEventListener('keyup', keyReleased);
+
+    document.addEventListener('mousemove', (event) => {
+        mouseX = event.movementX;//event.clientX - prevX;
+        mouseY = event.movementY;//event.clientY - prevY;
+
+        //prevX = event.clientX;
+        //prevY = event.clientY;
+    });
+
+    initializePoints();
+    requestAnimationFrame(frame);
+</script>
+
+<style>
+    body {
+        background-color: black;
+    }
+</style>
