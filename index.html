@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,6 +43,16 @@
             canvas.requestPointerLock();
     });
 
+    function cycle(a,b,t){
+        while (t > b){
+            t -= (b-a);
+        }
+        while (t < a){
+            t += (b-a);
+        }
+        return t;
+    }
+
     function lerp(a,b,t){
         return a + (b-a) * t;
     }
@@ -50,11 +61,11 @@
     const sca = 32;
     function initializePoints(){
         for (let x = 0; x < sca; x++){
-            for(let y = 0; y < sca; y++){
+            for(let y = 0; y < 1; y++){
                 for(let z = 0; z < sca; z++){
                     let r = x/sca*255;
                     let g = y/sca*255;
-                    let b = z/sca*255;
+                    let b = 255;//z/sca*255;
                     //let ptColor = [r,g,0];
                     
                     let point = [x,y,z,r,g,b];
@@ -141,19 +152,27 @@
         cam.y = player.y;
         cam.z = player.z;
 
-        if(WASD[0]){
-            player.z += speed;
+
+        let lookDir = cam.ry/(2*Math.PI) * 360;
+        lookDir = (lookDir * Math.PI)/180;
+        if(WASD[0]){ //Z relative
+            player.z += Math.cos(lookDir) * speed;
+            player.x -= Math.sin(lookDir) * speed;
         }
 
         if(WASD[2]){
-            player.z -= speed;
+            player.z -= Math.cos(lookDir) * speed;
+            player.x += Math.sin(lookDir) * speed;
+        }
+
+        if(WASD[3]){ //X relative
+            player.x += Math.cos(lookDir) * speed;
+            player.z += Math.sin(lookDir) * speed;
         }
 
         if(WASD[1]){
-            player.x -= speed;
-        }
-        if(WASD[3]){
-            player.x += speed;
+            player.x -= Math.cos(lookDir) * speed;
+            player.z -= Math.sin(lookDir) * speed;
         }
 
         if(player.y > groundPlane){
@@ -167,6 +186,7 @@
         cam.ry -= mouseX * cam.rotSpeed;
         cam.rx += mouseY * cam.rotSpeed;
 
+        cam.ry = cycle(0, 2*Math.PI, cam.ry);
         player.y += player.dy;
     }
 
@@ -187,6 +207,7 @@
         // Main loop
         playerMovement();
         render(ctx);
+        console.log(cam.ry/(2*Math.PI) * 360);
 
         setTimeout(() => { //FPS handler
         requestAnimationFrame(frame);
@@ -237,11 +258,8 @@
     document.addEventListener('keyup', keyReleased);
 
     document.addEventListener('mousemove', (event) => {
-        mouseX = event.movementX;//event.clientX - prevX;
-        mouseY = event.movementY;//event.clientY - prevY;
-
-        //prevX = event.clientX;
-        //prevY = event.clientY;
+        mouseX = event.movementX;
+        mouseY = event.movementY;
     });
 
     initializePoints();
