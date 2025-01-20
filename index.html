@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,9 +22,9 @@
     const r = [400, 266, 400];
 
     const player = new Object();
-    player.x = 4.75;
+    player.x = 8.75;
     player.y = 6;
-    player.z = -13.5;
+    player.z = 24.5;
     player.dy = 0;
     player.speed = .25;
 
@@ -37,7 +36,7 @@
     cam.ry = 0;
     cam.rz = 0;
     cam.rotSpeed = (1/360) * 0.5;
-    cam.clipDistance;
+    cam.clipDistance = -1;
 
     canvas.addEventListener('click', () => {
             canvas.requestPointerLock();
@@ -58,20 +57,38 @@
     }
 
     let points = []; //each point is an array, [X,Y,Z,R,G,B];
-    const sca = 32;
+    const sca = 16;
     function initializePoints(){
         for (let x = 0; x < sca; x++){
-            for(let y = 0; y < 1; y++){
+            for(let y = 0; y < sca; y++){
                 for(let z = 0; z < sca; z++){
                     let r = x/sca*255;
                     let g = y/sca*255;
-                    let b = 255;//z/sca*255;
-                    //let ptColor = [r,g,0];
+                    let b = z/sca*255;
+                    //let [r,g,b] = [255,255,255];
                     
                     let point = [x,y,z,r,g,b];
                     points.push(point);
                 }
             }
+        }
+    }
+
+
+    const [_0, _90, _180, _270, _360] = [0, Math.PI * 0.5, Math.PI, Math.PI*1.5, Math.PI*2];
+    function clipCheck(vert){
+        let [x,y,z] = [...vert];
+        x *= _scale;
+        z *= _scale;
+        let lookDir = cam.ry/(2*Math.PI) * 360;
+        lookDir = lookDir * (Math.PI/180);
+        let clipPlane = (Math.tan(lookDir)*(x-cam.x)) + ((cam.clipDistance)/Math.cos(lookDir));
+
+        if(((_270 < lookDir)&&(lookDir < _360)) || ((_0 <= lookDir)&&(lookDir < _90))){
+            return ((z-cam.z) >= clipPlane);
+        }
+        else{
+            return ((z-cam.z) < clipPlane);
         }
     }
 
@@ -138,6 +155,7 @@
             let pt = points[i];
             [x,y,z] = [pt[0], pt[1], pt[2]];
             let [r,g,b] = [pt[3], pt[4], pt[5]];
+            if (!clipCheck([x,y,z])){continue;}
             let coords = project(pt);
             drawPoint(coords, [r,g,b], 2);
         }
@@ -207,7 +225,6 @@
         // Main loop
         playerMovement();
         render(ctx);
-        console.log(cam.ry/(2*Math.PI) * 360);
 
         setTimeout(() => { //FPS handler
         requestAnimationFrame(frame);
@@ -265,7 +282,6 @@
     initializePoints();
     requestAnimationFrame(frame);
 </script>
-
 <style>
     body {
         background-color: black;
